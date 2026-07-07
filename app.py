@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # EXCEL FAYLDAN MA'LUMOTLARNI O'QISH
-EXCEL_FILE = "mahsulotlar.xlsx"
+EXCEL_FILE = "mahsulotlar.csv"
 
 if os.path.exists(EXCEL_FILE):
     try:
