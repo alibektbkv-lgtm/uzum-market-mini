@@ -86,7 +86,7 @@ EXCEL_FILE = "mahsulotlar.csv"
 
 if os.path.exists(EXCEL_FILE):
     try:
-        df = pd.read_excel(EXCEL_FILE)
+        df = pd.read_csv(EXCEL_FILE)
         # Ustunlar borligini tekshirish
         for col in ['id', 'toifa', 'nomi', 'narxi', 'oylik', 'rasm']:
             if col not in df.columns:
