@@ -1,182 +1,101 @@
-import streamlit as st
-import pandas as pd
-import os
-
-# Sahifa sozlamalari
-st.set_page_config(page_title="Uzum Market Pro", page_icon="🛍️", layout="wide")
-
-# Savatcha xotirasi
-if "savatcha" not in st.session_state:
-    st.session_state.savatcha = []
-
-# CSS dizayn
-st.markdown("""
-<style>
-    html, body, [data-testid="stAppViewContainer"] {
-        font-family: 'Inter', sans-serif;
-        background-color: #f9f9fa;
-    }
-    .brand-box {
-        background-color: #7000ff;
-        color: white;
-        padding: 15px;
-        border-radius: 12px;
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-    .product-card {
-        background: white;
-        border-radius: 12px;
-        padding: 12px;
-        border: 1px solid #e2e8f0;
-        margin-bottom: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-    }
-    .product-image {
-        width: 100%;
-        border-radius: 8px;
-        aspect-ratio: 1 / 1;
-        object-fit: cover;
-    }
-    .price-main {
-        font-size: 18px;
-        font-weight: 700;
-        color: #1f293d;
-        margin-top: 8px;
-    }
-    .price-monthly {
-        background-color: #fffae6;
-        color: #6b5000;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 2px 6px;
-        border-radius: 4px;
-        display: inline-block;
-    }
-    .product-title {
-        font-size: 13px;
-        color: #2d3a50;
-        height: 38px;
-        overflow: hidden;
-        margin-top: 5px;
-    }
-    .optom-tag {
-        background-color: #27ae60;
-        color: white;
-        font-size: 11px;
-        font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 4px;
-        display: inline-block;
-    }
-    div.stButton > button {
-        background-color: #7000ff !important;
-        color: white !important;
-        border-radius: 8px !important;
-        width: 100% !important;
-        border: none !important;
-        padding: 6px 0px !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# EXCEL FAYLDAN MA'LUMOTLARNI O'QISH
-EXCEL_FILE = "mahsulotlar.csv"
-
-if os.path.exists(EXCEL_FILE):
-    try:
-        df = pd.read_csv(EXCEL_FILE)
-        # Ustunlar borligini tekshirish
-        for col in ['id', 'toifa', 'nomi', 'narxi', 'oylik', 'rasm']:
-            if col not in df.columns:
-                df[col] = ""
-        chakana_tovarlar = df[df['toifa'] == 'chakana'].to_dict(orient='records')
-        optom_tovarlar = df[df['toifa'] == 'optom'].to_dict(orient='records')
-    except Exception as e:
-        st.error(f"Excel faylini o'qishda xato: {e}")
-        st.stop()
-else:
-    st.error(f"Xato: Papkada '{EXCEL_FILE}' fayli topilmadi!")
-    st.stop()
-
-# TEPADAGI PANEL
-col_top1, col_top2 = st.columns([3, 1])
-with col_top1:
-    st.markdown('<div class="brand-box">🛍️ Uzum Market Pro — 500+ Tovar Tizimi</div>', unsafe_allow_html=True)
-with col_top2:
-    savat_soni = len(st.session_state.savatcha)
-    st.markdown(f"<div style='background-color: #ffb800; color: #1f293d; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 18px;'>🛒 Savatda: {savat_soni} ta</div>", unsafe_allow_html=True)
-
-# QIDIRUV TIZIMI
-qidiruv = st.text_input("🔍 Mahsulotlarni qidirish...", "")
-
-# Bo'limlar
-tab1, tab2 = st.tabs(["🔥 Chakana savdo", "📦 OPTOM BO'LIMI"])
-
-def mahsulotlarni_chiqarish(tovarlar_royxati, is_optom=False):
-    if qidiruv:
-        tovarlar_royxati = [t for t in tovarlar_royxati if qidiruv.lower() in str(t['nomi']).lower()]
-        
-    if not tovarlar_royxati:
-        st.warning("Hech qanday mahsulot topilmadi.")
-        return
-
-    for i in range(0, len(tovarlar_royxati), 4):
-        qator = tovarlar_royxati[i:i+4]
-        cols = st.columns(4)
-        for idx, item in enumerate(qator):
-            with cols[idx]:
-                tag_html = f'<div class="optom-tag">📦 OPTOM</div>' if is_optom else f'<div class="price-monthly">{item.get("oylik", "")}</div>'
-                try:
-                    narx_val = int(item.get('narxi', 0))
-                    narx_str = f"{narx_val:,} so'm"
-                except:
-                    narx_str = f"{item.get('narxi', 0)} so'm"
-                
-                rasm_url = item.get('rasm', 'https://via.placeholder.com/400')
-                if pd.isna(rasm_url) or not str(rasm_url).startswith('http'):
-                    rasm_url = 'https://via.placeholder.com/400'
-
-                st.markdown(f"""
-                <div class="product-card">
-                    <img src="{rasm_url}" class="product-image">
-                    <div class="price-main">{narx_str}</div>
-                    {tag_html}
-                    <div class="product-title">{item.get('nomi', 'Nomsiz tovar')}</div>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button("🛒 Savatga", key=str(item.get('id', idx)) + ("_optom" if is_optom else "_chakana")):
-                    st.session_state.savatcha.append(item)
-                    st.rerun()
-
-with tab1:
-    mahsulotlarni_chiqarish(chakana_tovarlar, is_optom=False)
-
-with tab2:
-    mahsulotlarni_chiqarish(optom_tovarlar, is_optom=True)
-
-st.markdown("---")
-
-# SAVATCHA HISOB-KITOBI
-st.subheader("🧾 Buyurtmalarni hisoblash")
-if len(st.session_state.savatcha) == 0:
-    st.info("Savatchangiz bo'sh.")
-else:
-    c_s1, c_s2 = st.columns([2, 1])
-    jami = 0
-    with c_s1:
-        for tovar in st.session_state.savatcha:
-            try:
-                n_val = int(tovar.get('narxi', 0))
-                st.write(f"• **{tovar.get('nomi', 'Tovar')}** — {n_val:,} so'm")
-                jami += n_val
-            except:
-                st.write(f"• **{tovar.get('nomi', 'Tovar')}**")
-    with c_s2:
-        st.markdown(f"### Jami summa: {jami:,} so'm")
-        if st.button("✅ Rasmiylashtirish"):
-            st.balloons()
-            st.success("🎉 Buyurtma qabul qilindi!")
-            st.session_state.savatcha = []
-            st.rerun()
+id,toifa,nomi,narxi,oylik,rasm
+c1,chakana,Dush to'plami "Rain Shower" qora matoviy,1450000,135 000 so'm/oyiga,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400
+c2,chakana,Premium Unitaz keramik oq kaskadli,1850000,165 000 so'm/oyiga,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+c3,chakana,Oshxona uchun mikser krani (Smesitel) xrom,350000,32 000 so'm/oyiga,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+c4,chakana,Vanna uchun smesitel dush dastalari bilan,650000,59 000 so'm/oyiga,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+c5,chakana,Rakovina osti shkafi oq rangli (Moyka),1200000,110 000 so'm/oyiga,https://images.unsplash.com/photo-1620626011161-99745244d710?w=400
+c6,chakana,Zanglamaydigan po'latdan oshxona moykasi,550000,49 000 so'm/oyiga,https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400
+c7,chakana,Dush kabina oynali shaffof 90x90,3200000,295 000 so'm/oyiga,https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=400
+c8,chakana,Gidromassajli dush paneli sensorli,2800000,255 000 so'm/oyiga,https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=400
+c9,chakana,Plastik quvurlar leymasi (Payalnik) 800W,250000,23 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c10,chakana,Suv filtri 5 bosqichli "Osmos Pro",1650000,150 000 so'm/oyiga,https://images.unsplash.com/photo-1585832770485-e68a5dbfad52?w=400
+c11,chakana,Ariston suv isitgichi 80 litr,1350000,122 000 so'm/oyiga,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400
+c12,chakana,Bochka suv uchun plastik 500 litr,450000,41 000 so'm/oyiga,https://images.unsplash.com/photo-1527689368864-3a821dbccc34?w=400
+c13,chakana,Suv nasosi (Dvijok) Pedrollo 0.75 kW,950000,85 000 so'm/oyiga,https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400
+c14,chakana,Avtomat suv nasosi stansiyasi regulyatorli,1450000,132 000 so'm/oyiga,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+c15,chakana,Suyuq sovun dispenseri avtomat sensorli,120000,11 000 so'm/oyiga,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+c16,chakana,Sochiq quritgich elektr (Polotense sushitel),480000,44 000 so'm/oyiga,https://images.unsplash.com/photo-1620626011161-99745244d710?w=400
+c17,chakana,Balkon uchun kiyim quritgich osma,180000,16 000 so'm/oyiga,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400
+c18,chakana,Kanalizatsiya tozalash trosasi metall 5m,65000,6 000 so'm/oyiga,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+c19,chakana,Moslanuvchan plastik shlang 15m,85000,8 000 so'm/oyiga,https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=400
+c20,chakana,Suv jo'mragi plastik bog' uchun 1/2,15000,2 000 so'm/oyiga,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+c21,chakana,Santexnika podmotkasi (Fum lenta) 10 dona,25000,2 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c22,chakana,Silikon germetik shaffof "Master",35000,3 000 so'm/oyiga,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400
+c23,chakana,Suyuq mix (Kley) kuchli mustahkam,45000,4 000 so'm/oyiga,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400
+c24,chakana,Quvur qisqichi (Xomut) to'plami 20 dona,30000,2 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c25,chakana,Santexnika kaliti moslanuvchan (Razvodnoy),75000,7 000 so'm/oyiga,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+c26,chakana,Quvur kesgich qaychi (Truborez) maxsus,90000,8 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c27,chakana,Gaz plita uchun rezina shlang metall karkas,45000,4 000 so'm/oyiga,https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400
+c28,chakana,Vanna uchun rezina gilamcha sirpanchiqqa qarshi,55000,5 000 so'm/oyiga,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+c29,chakana,Hojatxona cho'tkasi tagligi bilan dizaynerlik,40000,3 000 so'm/oyiga,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+c30,chakana,Hojatxona qog'ozi ushlagichi metall qopqoqli,65000,6 000 so'm/oyiga,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+c31,chakana,Tish cho'tkalari uchun stakan devorga osma,35000,3 000 so'm/oyiga,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+c32,chakana,Vanna oynasi javonchali LED chiroqli,750000,68 000 so'm/oyiga,https://images.unsplash.com/photo-1620626011161-99745244d710?w=400
+c33,chakana,Dush dastalari uchun moslanuvchan ushlagich,20000,2 000 so'm/oyiga,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400
+c34,chakana,Moslanuvchan plastik gofra quvuri moyka uchun,25000,2 000 so'm/oyiga,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+c35,chakana,Sifon to'plami rakovina uchun klapanli,60000,5 000 so'm/oyiga,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+c36,chakana,Unitaz ichki mexanizmi (Armatura) universal,85000,8 000 so'm/oyiga,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+c37,chakana,Unitaz qopqog'i mikrolift mexanizmli,120000,11 000 so'm/oyiga,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+c38,chakana,Vanna chetlari uchun suv o'tkazmaydigan lenta,30000,2 000 so'm/oyiga,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+c39,chakana,Pol teshigi uchun metall panjara (Trap),45000,4 000 so'm/oyiga,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+c40,chakana,Suv bosimi o'lchagich (Manometr) professional,50000,4 000 so'm/oyiga,https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400
+c41,chakana,Issiq pol quvuri pex-al-pex 1 metr,8000,1 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c42,chakana,Isitish radiatori alyumin 10 seksiyali,850000,77 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c43,chakana,Suv hisoblagich (Schetchik) sovuq suvga,180000,16 000 so'm/oyiga,https://images.unsplash.com/photo-1585832770485-e68a5dbfad52?w=400
+c44,chakana,Suv hisoblagich (Schetchik) issiq suvga,180000,16 000 so'm/oyiga,https://images.unsplash.com/photo-1585832770485-e68a5dbfad52?w=400
+c45,chakana,Sharli kran (Kran babochka) latun 3/4,45000,4 000 so'm/oyiga,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+c46,chakana,Kran o'tkazgich mufta latun 1/2,12000,1 000 so'm/oyiga,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+c47,chakana,Ugolnik plastik quvur uchun 20mm,3000,500 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c48,chakana,Trojnik plastik quvur uchun 20mm,4000,500 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c49,chakana,Quvur izolyatsiyasi (Termofleks) 2m,10000,1 000 so'm/oyiga,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+c50,chakana,Santexniklar uchun maxsus asboblar sumkasi,150000,13 000 so'm/oyiga,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o1,optom,Dush to'plami "Rain Shower" (Blok: 10 dona),11500000,Ulgurji narx,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400
+o2,optom,Premium Unitaz keramik oq (Blok: 5 dona),7000000,Ulgurji narx,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+o3,optom,Oshxona mikser krani xrom (Quti: 30 dona),7500000,Ulgurji narx,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+o4,optom,Vanna smesiteli dastalari bilan (Quti: 20 dona),9000000,Ulgurji narx,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+o5,optom,Plastik quvurlar leymasi 800W (Blok: 10 dona),1800000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o6,optom,Suyuq sovun dispenseri avtomat (Quti: 50 dona),4500000,Ulgurji narx,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+o7,optom,Santexnika podmotkasi Fum lenta (Quti: 500 dona),750000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o8,optom,Silikon germetik shaffof "Master" (Quti: 24 dona),600000,Ulgurji narx,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400
+o9,optom,Suyuq mix (Kley) kuchli mustahkam (Quti: 24 dona),800000,Ulgurji narx,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400
+o10,optom,Santexnika kaliti razvodnoy (Blok: 20 dona),1100000,Ulgurji narx,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o11,optom,Sharli kran latun 3/4 (Quti: 100 dona),3200000,Ulgurji narx,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+o12,optom,Moslanuvchan plastik gofra quvuri (Quti: 100 dona),1500000,Ulgurji narx,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+o13,optom,Unitaz ichki mexanizmi universal (Quti: 40 dona),2400000,Ulgurji narx,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+o14,optom,Unitaz qopqog'i mikroliftli (Quti: 20 dona),1800000,Ulgurji narx,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+o15,optom,Vanna rezina gilamchasi (Quti: 50 dona),1750000,Ulgurji narx,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+o16,optom,Dvigatel tozalovchi Ahma (1 quti / 24 dona),480000,Blok narxi,https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=400
+o17,optom,Kanalizatsiya tozalash trosasi 5m (Blok: 30 dona),1350000,Ulgurji narx,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o18,optom,Moslanuvchan plastik shlang 15m (Blok: 20 dona),1200000,Ulgurji narx,https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=400
+o19,optom,Suv nasosi Pedrollo 0.75 kW (Blok: 5 dona),4000000,Ulgurji narx,https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400
+o20,optom,Ugolnik plastik quvur 20mm (Quti: 500 dona),1000000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o21,optom,Trojnik plastik quvur 20mm (Quti: 400 dona),1100000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o22,optom,Quvur kesgich qaychi Truborez (Blok: 25 dona),1600000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o23,optom,Pol teshigi uchun metall panjara Trap (Quti: 80 dona),2400000,Ulgurji narx,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o24,optom,Zanglamaydigan po'latdan oshxona moykasi (Blok: 10 dona),4500000,Ulgurji narx,https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400
+o25,optom,Kran o'tkazgich mufta latun 1/2 (Quti: 300 dona),2400000,Ulgurji narx,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+o26,optom,Issiq pol quvuri pex-al-pex (Bukta: 200 metr),1300000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o27,optom,Hojatxona cho'tkasi dizaynerlik (Quti: 40 dona),1100000,Ulgurji narx,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+o28,optom,Hojatxona qog'ozi ushlagichi metall (Quti: 50 dona),2200000,Ulgurji narx,https://images.unsplash.com/photo-1521207418485-99c705420785?w=400
+o29,optom,Vanna oynasi LED chiroqli (Blok: 5 dona),3000000,Ulgurji narx,https://images.unsplash.com/photo-1620626011161-99745244d710?w=400
+o30,optom,Quvur izolyatsiyasi Termofleks (To'plam: 100 dona),750000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o31,optom,Gaz plita uchun rezina shlang (Quti: 50 dona),1500000,Ulgurji narx,https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400
+o32,optom,Dush dastalari uchun ushlagich (Quti: 200 dona),2400000,Ulgurji narx,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400
+o33,optom,Suv bosimi o'lchagich Manometr (Quti: 40 dona),1500000,Ulgurji narx,https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400
+o34,optom,Ariston suv isitgichi 80 litr (Blok: 5 dona),5800000,Ulgurji narx,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400
+o35,optom,Isitish radiatori alyumin (To'plam: 5 ta radiator),3500000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o36,optom,Suv hisoblagich Schetchik (Quti: 20 dona),2800000,Ulgurji narx,https://images.unsplash.com/photo-1585832770485-e68a5dbfad52?w=400
+o37,optom,Quvur qisqichi Xomut to'plami (Quti: 50 paket),1000000,Ulgurji narx,https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400
+o38,optom,Vanna chetlari uchun lenta (Quti: 100 dona),2000000,Ulgurji narx,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+o39,optom,Tish cho'tkalari uchun stakan (Quti: 100 dona),1800000,Ulgurji narx,https://images.unsplash.com/photo-1584622781564-1d987f7333c1?w=400
+o40,optom,Santexnik asboblar sumkasi (Blok: 10 dona),1200000,Ulgurji narx,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o41,optom,Sifon to'plami rakovina uchun (Quti: 50 dona),2200000,Ulgurji narx,https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400
+o42,optom,Suv filtri "Osmos Pro" (Blok: 5 dona),7000000,Ulgurji narx,https://images.unsplash.com/photo-1585832770485-e68a5dbfad52?w=400
+o43,optom,Suv jo'mragi plastik 1/2 (Quti: 200 dona),1800000,Ulgurji narx,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o44,optom,Kiyim quritgich osma balkon uchun (Blok: 10 dona),1400000,Ulgurji narx,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400
+o45,optom,Sochiq quritgich elektr (Blok: 5 dona),2000000,Ulgurji narx,https://images.unsplash.com/photo-1620626011161-99745244d710?w=400
+o46,optom,Bochka suv uchun plastik 500L (Blok: 3 dona),1100000,Ulgurji narx,https://images.unsplash.com/photo-1527689368864-3a821dbccc34?w=400
+o47,optom,Gidromassajli dush paneli (Blok: 2 dona),4800000,Ulgurji narx,https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=400
+o48,optom,Dush kabina oynali 90x90 (Blok: 2 dona),5500000,Ulgurji narx,https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=400
+o49,optom,Avtomat suv nasosi stansiyasi (Blok: 3 dona),3800000,Ulgurji narx,https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400
+o50,optom,Rakovina osti shkafi Moyka (Blok: 3 dona),3000000,Ulgurji narx,https://images.unsplash.com/photo-1620626011161-99745244d710?w=400
